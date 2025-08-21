@@ -123,6 +123,19 @@ namespace GymFitnessTracker.Controllers
             return Ok(new { message = "deleted successfully" });
         }
 
+        [Authorize(Roles = "Admin")]
+        [HttpPost("GetTitles")]
+        public async Task<IActionResult> GetExerciseTitles([FromBody] List<Guid> ids)
+        {
+            if(ids == null || !ids.Any())
+            {
+                return BadRequest("No Exercises Found");
+            }
+
+            var titles = await _exerciseRepository.GetExerciseTitles(ids);
+            return Ok(titles);
+        }
+
         //[Authorize(Roles ="Admin")]
         [HttpGet("GetAllCategories")]
         public async Task<IActionResult> GetCategories()

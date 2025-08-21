@@ -1,5 +1,6 @@
 ﻿using GymFitnessTracker.Data;
 using GymFitnessTracker.Models.Domain;
+using GymFitnessTracker.Models.DTO;
 using Microsoft.EntityFrameworkCore;
 
 namespace GymFitnessTracker.Repositories

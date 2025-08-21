@@ -120,5 +120,13 @@ namespace GymFitnessTracker.Repositories
             }
             return filteredMuscles;*/
         }
+
+        public async Task<List<string>> GetExerciseTitles(List<Guid> ids)
+        {
+            return await _context.Exercises
+                        .Where(e => ids.Contains(e.Id))
+                        .Select(e => e.Title)
+                        .ToListAsync();
+        }
     }
 }

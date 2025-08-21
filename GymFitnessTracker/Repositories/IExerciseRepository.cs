@@ -11,6 +11,7 @@ namespace GymFitnessTracker.Repositories
         Task<Exercise?> UpdateExerciseAsync(Guid id, Exercise exercise);
         Task<List<Category>> GetAllCategories();
         Task<List<PrimaryMuscle>> GetAllMuscles();
+        Task<List<string>> GetExerciseTitles(List<Guid> id);
 
     }
 }
