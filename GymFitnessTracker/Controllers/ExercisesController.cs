@@ -136,6 +136,15 @@ namespace GymFitnessTracker.Controllers
             return Ok(titles);
         }
 
+        [Authorize(Roles = "Admin")]
+        [HttpGet("CheckIsVideoAvailable")]
+        public async Task<ActionResult<IEnumerable<string>>> CheckIsVideoAvailable(CancellationToken ct)
+        {
+            var brokenExercises = await _exerciseRepository.GetExercisesWithBrokenYoutubeAsync(ct: ct);
+            var result = brokenExercises.Select(x => new { id = x.Id, title = x.Title });
+            return Ok(result);
+        }
+
         //[Authorize(Roles ="Admin")]
         [HttpGet("GetAllCategories")]
         public async Task<IActionResult> GetCategories()

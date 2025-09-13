@@ -11,6 +11,7 @@ namespace GymFitnessTracker.Models.Domain
         public string Password { get; set; }
         public string InAppName { get; set; }
         public string[] Roles { get; set; }
+        public string Gender { get; set; }
         public IFormFile? ProfilePicture { get; set; }
     }
 }

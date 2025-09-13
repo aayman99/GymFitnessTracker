@@ -57,6 +57,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(
 
 builder.Services.AddScoped<ITokenRepository, TokenRepository>();
 builder.Services.AddScoped<IExerciseRepository, SQLExerciseRepository>();
+builder.Services.AddHttpClient();
 builder.Services.AddScoped<IWorkoutRepository, SQLWorkoutRepository>();
 builder.Services.AddScoped<IPlanRepository, SQLPlanRepository>();
 builder.Services.AddScoped<ICustomExerciseRepository, SQLCustomExerciseRepository>();
@@ -75,7 +76,7 @@ builder.Services.Configure<IdentityOptions>(
         options.Password.RequireDigit = true;
         options.Password.RequireLowercase = true;
         options.Password.RequireUppercase = true;
-        options.Password.RequireNonAlphanumeric = true;
+        options.Password.RequireNonAlphanumeric = false;
         options.Password.RequiredLength = 7;
     });
 

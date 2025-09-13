@@ -20,15 +20,17 @@ namespace GymFitnessTracker.Controllers
         private readonly IEmailSender _emailSender;
         private readonly ITokenRepository _tokenRepository;
         private readonly IWebHostEnvironment _webHostEnvironment;
+        private readonly RoleManager<IdentityRole> _roleManager;
 
 
-        public AuthController(UserManager<ApplicationUser> userManager, ILogger<AuthController> logger, IEmailSender emailSender, ITokenRepository tokenRepository, IWebHostEnvironment webHostEnvironment)
+        public AuthController(UserManager<ApplicationUser> userManager, ILogger<AuthController> logger, IEmailSender emailSender, ITokenRepository tokenRepository, IWebHostEnvironment webHostEnvironment, RoleManager<IdentityRole> roleManager)
         {
             _userManager = userManager;
             _logger = logger;
             _emailSender = emailSender;
             _tokenRepository = tokenRepository;
             _webHostEnvironment = webHostEnvironment;
+            _roleManager = roleManager;
         }
 
         [HttpPost]
@@ -58,11 +60,20 @@ namespace GymFitnessTracker.Controllers
                         );
                 }
 
+                
+                if (string.IsNullOrWhiteSpace(registerUserRequest.Username) || registerUserRequest.Username.Contains(" "))
+                {
+                    return BadRequest(
+                        new {message = "Username cannot contain spaces"}
+                        );
+                }
+
                 var identityUser = new ApplicationUser { 
                     UserName = registerUserRequest.Username,
                     //UserName = registerUserRequest.Email,
                     Email = registerUserRequest.Email,
                     InAppName = registerUserRequest.InAppName,
+                    Gender = registerUserRequest.Gender,
                     VerificationPin = new Random().Next(100000,999999).ToString(),
                     VerificationPinExpiry = DateTime.UtcNow.AddMinutes(1)
                 };
@@ -94,6 +105,13 @@ namespace GymFitnessTracker.Controllers
                     // add roles to user
                     if(registerUserRequest.Roles != null && registerUserRequest.Roles.Any())
                     {
+                        foreach (var role in registerUserRequest.Roles)
+                        {
+                            if(!await _roleManager.RoleExistsAsync(role))
+                            {
+                                return BadRequest(new { message = $"Role '{role}' does not exist" });
+                            }
+                        }
                         identityResult = await _userManager.AddToRolesAsync(identityUser, registerUserRequest.Roles);
                         if (identityResult.Succeeded)
                         {
@@ -112,10 +130,11 @@ namespace GymFitnessTracker.Controllers
                         }
                     }
                 }
-                //return BadRequest(identityResult.Errors);
-                return BadRequest(
+
+                /*return BadRequest(
                     new {Message = identityResult.Errors}
-                    );
+                    );*/
+                return BadRequest(identityResult.Errors.Select(e => e.Description));
             }
             catch (Exception ex)
             {

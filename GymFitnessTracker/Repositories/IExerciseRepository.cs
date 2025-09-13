@@ -1,4 +1,5 @@
 ﻿using GymFitnessTracker.Models.Domain;
+using GymFitnessTracker.Models.DTO;
 
 namespace GymFitnessTracker.Repositories
 {
@@ -12,6 +13,11 @@ namespace GymFitnessTracker.Repositories
         Task<List<Category>> GetAllCategories();
         Task<List<PrimaryMuscle>> GetAllMuscles();
         Task<List<string>> GetExerciseTitles(List<Guid> id);
+        //Task<List<string>> CheckBrokenVideoAsync();
+        //Task<List<string>> CheckBrokenVideosAsync(CancellationToken ct = default);
+        Task<List<(Guid Id, string Title)>> GetExercisesWithBrokenYoutubeAsync(
+       int maxConcurrency = 10,
+       CancellationToken ct = default);
 
     }
 }

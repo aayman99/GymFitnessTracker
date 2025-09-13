@@ -1,16 +1,27 @@
 ﻿using GymFitnessTracker.Data;
 using GymFitnessTracker.Models.Domain;
 using Microsoft.EntityFrameworkCore;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Net;
+using System.Text.RegularExpressions;
+using static System.Net.WebRequestMethods;
 
 namespace GymFitnessTracker.Repositories
 {
     public class SQLExerciseRepository : IExerciseRepository
     {
         private readonly ApplicationDbContext _context;
+        private readonly IHttpClientFactory _httpClient;
 
-        public SQLExerciseRepository(ApplicationDbContext context)
+
+        
+
+        public SQLExerciseRepository(ApplicationDbContext context, IHttpClientFactory httpClient)
         {
             _context = context;
+            _httpClient = httpClient;
+
         }
 
         public async Task<Exercise?> CreateExerciseAsync(Exercise exercise)
@@ -128,5 +139,118 @@ namespace GymFitnessTracker.Repositories
                         .Select(e => e.Title)
                         .ToListAsync();
         }
+        public async Task<List<(Guid Id, string Title)>> GetExercisesWithBrokenYoutubeAsync(
+        int maxConcurrency = 10,
+        CancellationToken ct = default)
+        {
+            // pull minimal columns
+            var exercises = await _context.Exercises
+                .AsNoTracking()
+                .Select(e => new { e.Id, e.Title, e.VideoUrl, e.FemaleVideoUrl })
+                .ToListAsync(ct);
+
+            var http = _httpClient.CreateClient();
+            http.Timeout = TimeSpan.FromSeconds(8);
+
+            // keep concurrency but no concurrent collections
+            var sem = new SemaphoreSlim(maxConcurrency);
+            var tasks = new List<Task>();
+
+            // use a normal set+lock to collect unique titles
+            //var brokenTitles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var brokenTitles = new Dictionary<Guid, string>();
+            var gate = new object();
+
+            foreach (var ex in exercises)
+            {
+                tasks.Add(CheckOne(ex.Id, ex.Title, ex.VideoUrl));
+                tasks.Add(CheckOne(ex.Id, ex.Title, ex.FemaleVideoUrl));
+            }
+
+            await Task.WhenAll(tasks);
+
+            // return as ordered list
+            //return brokenTitles.OrderBy(t => t).ToList();
+            return brokenTitles.Select(x => (x.Key, x.Value))
+                               .OrderBy(x => x.Key)
+                               .ToList();
+
+            async Task CheckOne(Guid id, string title, string? url)
+            {
+                // treat null/empty as broken
+                
+                if (string.IsNullOrWhiteSpace(url))
+                {
+                    lock (gate) brokenTitles[id] = title;
+                    return;
+                }
+
+                var vid = TryGetVideoId(url);
+                if (vid is null)
+                {
+                    lock (gate) brokenTitles[id] = title;
+                    return;
+                }
+
+                await sem.WaitAsync(ct);
+                try
+                {
+                    var (ok, _, _) = await IsAvailableViaOEmbedAsync(http, vid, ct);
+                    if (!ok)
+                    {
+                        lock (gate) brokenTitles[id] = title;
+                    }
+                }
+                finally
+                {
+                    sem.Release();
+                }
+            }
+        }
+        public static string? TryGetVideoId(string? url)
+        {
+            if (string.IsNullOrWhiteSpace(url)) return null;
+
+            var patterns = new[]
+            {
+                @"(?:v=)([A-Za-z0-9_\-]{6,})",
+                @"youtu\.be/([A-Za-z0-9_\-]{6,})",
+                @"youtube\.com/embed/([A-Za-z0-9_\-]{6,})",
+                @"youtube\.com/shorts/([A-Za-z0-9_\-]{6,})"
+            };
+
+            foreach (var p in patterns)
+            {
+                var m = Regex.Match(url, p, RegexOptions.IgnoreCase);
+                if (m.Success) return m.Groups[1].Value;
+            }
+            return null;
+        }
+        public static async Task<(bool ok, HttpStatusCode? status, string? reason)> IsAvailableViaOEmbedAsync(
+            HttpClient http, string videoId, CancellationToken ct = default)
+        {
+            var watchUrl = $"https://www.youtube.com/watch?v={videoId}";
+            var requestUrl = $"https://www.youtube.com/oembed?url={Uri.EscapeDataString(watchUrl)}&format=json";
+
+            try
+            {
+                using var req = new HttpRequestMessage(HttpMethod.Get, requestUrl);
+                using var resp = await http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
+
+                if (resp.IsSuccessStatusCode)
+                    return (true, resp.StatusCode, null);
+
+                return (false, resp.StatusCode, resp.ReasonPhrase);
+            }
+            catch (TaskCanceledException)
+            {
+                return (false, null, "timeout");
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+        
     }
 }
