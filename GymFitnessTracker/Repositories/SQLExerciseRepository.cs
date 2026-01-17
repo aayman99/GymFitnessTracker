@@ -49,31 +49,77 @@ namespace GymFitnessTracker.Repositories
             return exercise;
         }
 
-        public async Task<List<Exercise>> GetAllExercisesAsync(string? filterOn = null, string? filterQuery = null)
+        public async Task<List<Exercise>> GetAllExercisesAsync(string? titleFilter = null, string? categoryFilter = null, string? muscleFilter = null, string language = "EN")
         {
+            bool isArabic = language.Equals("AR", StringComparison.OrdinalIgnoreCase);
+            
             var exercises = _context.Exercises.Include(x=>x.PrimaryMuscle)
                                               .Include(x=>x.Category)
-                                              .AsQueryable()
-                                              .OrderBy(x => x.Title);
-            if (string.IsNullOrWhiteSpace(filterOn) == false && string.IsNullOrWhiteSpace(filterQuery) == false)
+                                              .AsQueryable();
+
+            // Apply title filter - only search English title
+            if (!string.IsNullOrWhiteSpace(titleFilter))
             {
-                if (filterOn.Equals("Title", StringComparison.OrdinalIgnoreCase))
+                exercises = exercises.Where(x => x.Title.Contains(titleFilter));
+            }
+
+            // Apply category filter if provided
+            if (!string.IsNullOrWhiteSpace(categoryFilter))
+            {
+                if (isArabic)
                 {
-                    exercises = exercises.Where(x => x.Title.Contains(filterQuery)).OrderBy(x => x.Title);
+                    exercises = exercises.Where(x => 
+                        (x.Category.Title_ar != null && x.Category.Title_ar.Contains(categoryFilter)) || 
+                        x.Category.Title.Contains(categoryFilter));
                 }
-                else if(filterOn.Equals("Category", StringComparison.OrdinalIgnoreCase))
+                else
                 {
-                    exercises = exercises.Where(x => x.Category.Title.Contains(filterQuery)).OrderBy(x => x.Title);
-                    //exercises = exercises.Where(x => x.Category.Contains(filterQuery));
-                }
-                else if (filterOn.Equals("Muscle", StringComparison.OrdinalIgnoreCase))
-                {
-                    exercises = exercises.Where(x => x.PrimaryMuscle.Title.Contains(filterQuery)).OrderBy(x => x.Title);
-                    //exercises = exercises.Where(x => x.PrimaryMuscle.Contains(filterQuery));
+                    exercises = exercises.Where(x => x.Category.Title.Contains(categoryFilter));
                 }
             }
-            return await exercises.ToListAsync();
-            //return await _context.Exercises.ToListAsync();
+
+            // Apply muscle filter if provided
+            if (!string.IsNullOrWhiteSpace(muscleFilter))
+            {
+                if (isArabic)
+                {
+                    exercises = exercises.Where(x => 
+                        (x.PrimaryMuscle.Title_ar != null && x.PrimaryMuscle.Title_ar.Contains(muscleFilter)) || 
+                        x.PrimaryMuscle.Title.Contains(muscleFilter));
+                }
+                else
+                {
+                    exercises = exercises.Where(x => x.PrimaryMuscle.Title.Contains(muscleFilter));
+                }
+            }
+
+            // Map to localized version - Title stays English, Description gets localized
+            var result = await exercises
+                .OrderBy(x => x.Title)
+                .Select(x => new Exercise
+                {
+                    Id = x.Id,
+                    Title = x.Title,
+                    Description = isArabic ? (x.Description_ar ?? x.Description) : x.Description,
+                    VideoUrl = x.VideoUrl,
+                    FemaleVideoUrl = x.FemaleVideoUrl,
+                    PicturePath = x.PicturePath,
+                    PrimaryMuscleId = x.PrimaryMuscleId,
+                    CategoryId = x.CategoryId,
+                    PrimaryMuscle = new PrimaryMuscle
+                    {
+                        Id = x.PrimaryMuscle.Id,
+                        Title = isArabic ? (x.PrimaryMuscle.Title_ar ?? x.PrimaryMuscle.Title) : x.PrimaryMuscle.Title
+                    },
+                    Category = new Category
+                    {
+                        Id = x.Category.Id,
+                        Title = isArabic ? (x.Category.Title_ar ?? x.Category.Title) : x.Category.Title
+                    }
+                })
+                .ToListAsync();
+
+            return result;
         }
 
         public async Task<Exercise?> GetExerciseAsync(string title)
@@ -93,11 +139,12 @@ namespace GymFitnessTracker.Repositories
                 return null;
             }
             existingExercise.Title = exercise.Title;
+            existingExercise.Description = exercise.Description;
+            existingExercise.Description_ar = exercise.Description_ar;
             existingExercise.PrimaryMuscleId = exercise.PrimaryMuscleId;
             existingExercise.VideoUrl = exercise.VideoUrl;
             existingExercise.FemaleVideoUrl = exercise.FemaleVideoUrl;
             existingExercise.CategoryId = exercise.CategoryId;
-            existingExercise.Description = exercise.Description;
             existingExercise.PicturePath = exercise.PicturePath;
 
             await _context.SaveChangesAsync();
@@ -110,16 +157,34 @@ namespace GymFitnessTracker.Repositories
             return updatedExercise;
         }
 
-        public async Task<List<Category>> GetAllCategories()
+        public async Task<List<Category>> GetAllCategories(string language = "EN")
         {
-            var categories = await _context.Categories.ToListAsync();
+            bool isArabic = language.Equals("AR", StringComparison.OrdinalIgnoreCase);
+            
+            var categories = await _context.Categories
+                .Select(c => new Category
+                {
+                    Id = c.Id,
+                    Title = isArabic ? (c.Title_ar ?? c.Title) : c.Title
+                })
+                .ToListAsync();
+            
             return categories;
             /*var categories = await _context.Exercises.Select(x => x.Category).Distinct().ToListAsync();
             return categories;*/
         }
-        public async Task<List<PrimaryMuscle>> GetAllMuscles()
+        public async Task<List<PrimaryMuscle>> GetAllMuscles(string language = "EN")
         {
-            var muscles = await _context.PrimaryMuscles.ToListAsync();
+            bool isArabic = language.Equals("AR", StringComparison.OrdinalIgnoreCase);
+            
+            var muscles = await _context.PrimaryMuscles
+                .Select(m => new PrimaryMuscle
+                {
+                    Id = m.Id,
+                    Title = isArabic ? (m.Title_ar ?? m.Title) : m.Title
+                })
+                .ToListAsync();
+            
             return muscles;
 
             /*var muscles = await _context.Exercises.Select(x => x.PrimaryMuscle).Distinct().ToListAsync();

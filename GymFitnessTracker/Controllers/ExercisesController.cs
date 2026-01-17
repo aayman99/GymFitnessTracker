@@ -31,11 +31,12 @@ namespace GymFitnessTracker.Controllers
 
         [HttpGet("GetAllExercises")]
         public async Task<IActionResult> GetAll([FromQuery] string role, [FromQuery] string gender,
-                                                [FromQuery] string? filterOn, [FromQuery] string? filterQuery)
+                                                [FromQuery] string? titleFilter, [FromQuery] string? categoryFilter, [FromQuery] string? muscleFilter,
+                                                [FromQuery] string language = "EN")
         {
             
 
-            var exercisesDomain = await _exerciseRepository.GetAllExercisesAsync(filterOn,filterQuery);
+            var exercisesDomain = await _exerciseRepository.GetAllExercisesAsync(titleFilter, categoryFilter, muscleFilter, language);
             //var exercisesDto = _mapper.Map<List<ExerciseDto>>(exercisesDomain);
 
             if (role.Equals("admin", StringComparison.OrdinalIgnoreCase))
@@ -147,17 +148,17 @@ namespace GymFitnessTracker.Controllers
 
         //[Authorize(Roles ="Admin")]
         [HttpGet("GetAllCategories")]
-        public async Task<IActionResult> GetCategories()
+        public async Task<IActionResult> GetCategories([FromQuery] string language = "EN")
         {
-            var categories = await _exerciseRepository.GetAllCategories();
+            var categories = await _exerciseRepository.GetAllCategories(language);
             return Ok(categories);
         }
         
         //[Authorize(Roles ="Admin")]
         [HttpGet("GetAllMuscles")]
-        public async Task<IActionResult> GetMuscles()
+        public async Task<IActionResult> GetMuscles([FromQuery] string language = "EN")
         {
-            var muscles = await _exerciseRepository.GetAllMuscles();
+            var muscles = await _exerciseRepository.GetAllMuscles(language);
             return Ok(muscles);
         }
 

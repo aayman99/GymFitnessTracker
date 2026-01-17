@@ -1,4 +1,5 @@
 ﻿using GymFitnessTracker.Models.Domain;
+using GymFitnessTracker.Models.DTO;
 
 namespace GymFitnessTracker.Repositories
 {
@@ -12,17 +13,18 @@ namespace GymFitnessTracker.Repositories
         Task<WorkoutExercise?> AddGeneralExerciseToWorkoutAsync(Guid workoutId, Guid exerciseId);
         Task<WorkoutExercise?> AddCustomExerciseToWorkoutAsync(Guid workoutId, Guid customExerciseId);
         Task<Set?> AddSetToWorkoutExerciseAsync(
-            Guid workoutExerciseId, int? repetitions, string? note, float? weight, float? duration, float? rest, Guid? timeUnitId, Guid? weightUnitId);
+            Guid workoutExerciseId, int? repetitions, string? note, float? weight, float? duration, float? rest, Guid? restTimeUnitId, Guid? durationTimeUnitId, Guid? weightUnitId, Guid? userId = null);
         //Task<Set?> AddSetToWorkoutExerciseAsync(Guid workoutExerciseId, Set set);
         //Task<Set?> UpdateSetAsync(Guid setId, Set oldSet);
         Task<Set?> UpdateSetAsync(
-            Guid setId, int? repetitions, string? note, float? weight, float? duration, float? rest, Guid? timeUnitId, Guid? weightUnitId);
+            Guid setId, int? repetitions, string? note, float? weight, float? duration, float? rest, Guid? restTimeUnitId, Guid? durationTimeUnitId, Guid? weightUnitId);
         Task<Set?> GetSetByIdAsync(Guid setId);
         Task <bool> DeleteSetAsync(Guid setId);
         Task<bool> DeleteWorkoutExerciseAsync(Guid workoutExerciseId);
         Task<bool> DeleteWorkoutAsync(Guid workoutId);
         Task<List<TimeUnit>> GetTimeUnit();
         Task<List<WeightUnit>> GetWeightUnit();
+        Task<(bool Success, string ErrorMessage)> ReorderExercisesAsync(Guid userId, Guid workoutId, List<ExerciseOrderDto> exerciseOrders);
 
     }
 }

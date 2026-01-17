@@ -39,8 +39,43 @@ namespace GymFitnessTracker.Repositories
         }
         public async Task<List<Workout>> GetAllWorkoutsAsync(Guid userId, Guid planId)
         {
-           
-            var workouts =  await _context.Workouts
+            // First check if the plan is static
+            var plan = await _context.Plans.FindAsync(planId);
+            if (plan != null && plan.IsStatic)
+            {
+                // For static plans, return all workouts in the plan (created by admin)
+                // But only include sets that belong to the current user
+                var workouts = await _context.Workouts
+                    .Where(u => u.PlanId == planId)
+                    .Include(w => w.WorkoutExercises)
+                        .ThenInclude(e => e.Exercise)
+                            .ThenInclude(p => p.PrimaryMuscle)
+                    .Include(w => w.WorkoutExercises)
+                        .ThenInclude(e => e.Exercise)
+                            .ThenInclude(c => c.Category)
+                    .Include(w => w.WorkoutExercises)
+                        .ThenInclude(e => e.CustomExercise)
+                    .Include(w => w.WorkoutExercises)
+                        .ThenInclude(s => s.Sets.Where(set => set.UserId == userId))
+                            .ThenInclude(s => s.RestTimeUnit)
+                    .Include(w => w.WorkoutExercises)
+                        .ThenInclude(s => s.Sets.Where(set => set.UserId == userId))
+                            .ThenInclude(s => s.DurationTimeUnit)
+                    .Include(w => w.WorkoutExercises)
+                        .ThenInclude(s => s.Sets.Where(set => set.UserId == userId))
+                            .ThenInclude(wt => wt.WeightUnit)
+                    .ToListAsync();
+
+            foreach(var workout in workouts)
+            {
+                workout.WorkoutExercises = workout.WorkoutExercises.OrderBy(we => we.Order).ThenBy(we => we.TimeCreated).ToList();
+            }
+            return workouts;
+            }
+            else
+            {
+                // For non-static plans, return workouts that belong to the user
+                var workouts = await _context.Workouts
                     .Where(u => u.UserId == userId && u.PlanId == planId)
                     .Include(w => w.WorkoutExercises)
                         .ThenInclude(e => e.Exercise)
@@ -50,23 +85,23 @@ namespace GymFitnessTracker.Repositories
                             .ThenInclude(c => c.Category)
                     .Include(w => w.WorkoutExercises)
                         .ThenInclude(e => e.CustomExercise)
-                            /*.ThenInclude(pce => pce.PrimaryMuscle)
-                    .Include(w => w.WorkoutExercises)
-                        .ThenInclude(e => e.CustomExercise)
-                            .ThenInclude(cce => cce.Category)*/
                     .Include(w => w.WorkoutExercises)
                         .ThenInclude(s => s.Sets)
-                            .ThenInclude(tu => tu.TimeUnit)
+                            .ThenInclude(s => s.RestTimeUnit)
+                    .Include(w => w.WorkoutExercises)
+                        .ThenInclude(s => s.Sets)
+                            .ThenInclude(s => s.DurationTimeUnit)
                     .Include(w => w.WorkoutExercises)
                         .ThenInclude(s => s.Sets)
                             .ThenInclude(wt => wt.WeightUnit)
                     .ToListAsync();
 
-            foreach(var workout in workouts)
-            {
-                workout.WorkoutExercises = workout.WorkoutExercises.OrderBy(we => we.TimeCreated).ToList();
+                foreach(var workout in workouts)
+                {
+                    workout.WorkoutExercises = workout.WorkoutExercises.OrderBy(we => we.Order).ThenBy(we => we.TimeCreated).ToList();
+                }
+                return workouts;
             }
-            return workouts;
         }
         public async Task<Workout?> GetWorkoutById(Guid id)
         {
@@ -104,12 +139,18 @@ namespace GymFitnessTracker.Repositories
                 return null;
             }
 
+            // Calculate the next order number to add the exercise at the bottom
+            int nextOrder = workout.WorkoutExercises.Any() 
+                ? workout.WorkoutExercises.Max(we => we.Order) + 1 
+                : 0;
+
             var workoutExercise = new WorkoutExercise
             {
                 Id = Guid.NewGuid(),
                 WorkoutId = workoutId,
                 ExerciseId = exerciseId,
                 Exercise = exercise,
+                Order = nextOrder,
                 //TimeCreated = DateTime.UtcNow,
                 Sets = new List<Set>()
             };
@@ -135,11 +176,17 @@ namespace GymFitnessTracker.Repositories
                 return null;
             }
 
+            // Calculate the next order number to add the exercise at the bottom
+            int nextOrder = workout.WorkoutExercises.Any() 
+                ? workout.WorkoutExercises.Max(we => we.Order) + 1 
+                : 0;
+
             var workoutExercise = new WorkoutExercise
             {
                 Id = Guid.NewGuid(),
                 WorkoutId = workoutId,
                 CustomExerciseId = customexerciseId,
+                Order = nextOrder,
                 //TimeCreated = DateTime.UtcNow,
                 Sets = new List<Set>()
             };
@@ -151,7 +198,7 @@ namespace GymFitnessTracker.Repositories
         //public async Task<Set?> AddSetToWorkoutExerciseAsync(Guid workoutExerciseId, int? repetitions, float? weight, float? duration, float? rest, )
 
         public async Task<Set?> AddSetToWorkoutExerciseAsync(
-            Guid workoutExerciseId, int? repetitions, string? note, float? weight, float? duration, float? rest, Guid? timeUnitId,  Guid? weightUnitId)
+            Guid workoutExerciseId, int? repetitions, string? note, float? weight, float? duration, float? rest, Guid? restTimeUnitId, Guid? durationTimeUnitId, Guid? weightUnitId, Guid? userId = null)
         {
             var workoutExercise = await _context.WorkoutExercises.FirstOrDefaultAsync(x=>x.Id == workoutExerciseId);
             if (workoutExercise == null)
@@ -168,8 +215,10 @@ namespace GymFitnessTracker.Repositories
                 Weight = weight,
                 Duration = duration,
                 RestTime = rest,
-                TimeUnitId = timeUnitId,
-                WeightUnitId = weightUnitId
+                RestTimeUnitId = restTimeUnitId,
+                DurationTimeUnitId = durationTimeUnitId,
+                WeightUnitId = weightUnitId,
+                UserId = userId
                 
             };
 
@@ -178,13 +227,14 @@ namespace GymFitnessTracker.Repositories
             await _context.SaveChangesAsync();
 
             var setWithUnits = await _context.Sets
-                                             .Include(s => s.TimeUnit)
+                                             .Include(s => s.RestTimeUnit)
+                                             .Include(s => s.DurationTimeUnit)
                                              .Include(s => s.WeightUnit)
                                              .FirstOrDefaultAsync(s => s.Id == set.Id);
             return setWithUnits;
         }
         public async Task<Set?> UpdateSetAsync(
-            Guid setId, int? repetitions, string? note, float? weight, float? duration, float? rest, Guid? timeUnitId, Guid? weightUnitId)
+            Guid setId, int? repetitions, string? note, float? weight, float? duration, float? rest, Guid? restTimeUnitId, Guid? durationTimeUnitId, Guid? weightUnitId)
         {
             var set = await _context.Sets.FirstOrDefaultAsync(x => x.Id == setId);
             if (set == null)
@@ -196,7 +246,8 @@ namespace GymFitnessTracker.Repositories
             set.Weight = weight;
             set.Duration = duration;
             set.RestTime = rest;
-            set.TimeUnitId = timeUnitId;
+            set.RestTimeUnitId = restTimeUnitId;
+            set.DurationTimeUnitId = durationTimeUnitId;
             set.WeightUnitId = weightUnitId;
             
             await _context.SaveChangesAsync();
@@ -226,8 +277,9 @@ namespace GymFitnessTracker.Repositories
             return await _context.Sets
                 .Include(s => s.WorkoutExercise)
                     .ThenInclude(we => we.Workout)
-                .Include(tu => tu.TimeUnit)
-                .Include(wu => wu.WeightUnit)
+                .Include(s => s.RestTimeUnit)
+                .Include(s => s.DurationTimeUnit)
+                .Include(s => s.WeightUnit)
                 .FirstOrDefaultAsync(s => s.Id == setId);
         }
         public async Task<bool> DeleteSetAsync(Guid setId)
@@ -278,6 +330,33 @@ namespace GymFitnessTracker.Repositories
         {
             var weightUnits = await _context.WeightUnits.ToListAsync();
             return weightUnits;
+        }
+
+        public async Task<(bool Success, string ErrorMessage)> ReorderExercisesAsync(Guid userId, Guid workoutId, List<ExerciseOrderDto> exerciseOrders)
+        {
+            var workout = await _context.Workouts.FindAsync(workoutId);
+            if (workout == null) 
+                return (false, "Workout not found");
+
+            // Check permissions
+            var plan = await _context.Plans.FindAsync(workout.PlanId);
+            if (plan != null && !plan.IsStatic && workout.UserId != userId)
+                return (false, "Access denied: You don't have permission to modify this workout");
+
+            // Update orders
+            foreach (var exerciseOrder in exerciseOrders)
+            {
+                var workoutExercise = await _context.WorkoutExercises
+                    .FirstOrDefaultAsync(we => we.Id == exerciseOrder.WorkoutExerciseId && we.WorkoutId == workoutId);
+
+                if (workoutExercise == null)
+                    return (false, $"Exercise with ID {exerciseOrder.WorkoutExerciseId} not found in workout");
+                
+                workoutExercise.Order = exerciseOrder.Order;
+            }
+
+            await _context.SaveChangesAsync();
+            return (true, "Success");
         }
 
     }

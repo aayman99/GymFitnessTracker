@@ -38,6 +38,23 @@ namespace GymFitnessTracker.Controllers
             return Ok(plansDto);
         }
 
+        [HttpGet("static")]
+        public async Task<IActionResult> GetAllStaticPlans()
+        {
+            var staticPlans = await _planRepository.GetAllStaticPlansAsync();
+            var plansDto = _mapper.Map<List<PlanDto>>(staticPlans);
+            return Ok(plansDto);
+        }
+
+        [HttpGet("user")]
+        public async Task<IActionResult> GetAllUserPlans()
+        {
+            var userId = GetUserId();
+            var userPlans = await _planRepository.GetAllUserPlansAsync(userId);
+            var plansDto = _mapper.Map<List<PlanDto>>(userPlans);
+            return Ok(plansDto);
+        }
+
         [HttpGet("{id}")]
         public async Task<IActionResult> GetPlanById(Guid id)
         {
@@ -99,6 +116,63 @@ namespace GymFitnessTracker.Controllers
             }
 
             return Ok(new {message = "Plan deleted successfully."});
+        }
+
+        // Admin-only endpoints for static plans
+        [Authorize(Roles = "Admin")]
+        [HttpPost("static")]
+        public async Task<IActionResult> CreateStaticPlan([FromBody] AddStaticPlanRequestDto planRequestDto)
+        {
+            var plan = new Plan
+            {
+                Id = Guid.NewGuid(),
+                UserId = Guid.Empty, // Static plans don't belong to a specific user
+                Title = planRequestDto.Title,
+                Notes = planRequestDto.Notes,
+                IsStatic = true
+            };
+
+            var createdPlan = await _planRepository.CreatePlanAsync(plan);
+            var planDto = _mapper.Map<PlanDto>(createdPlan);
+            return Ok(planDto);
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpPut("static/{id}")]
+        public async Task<IActionResult> UpdateStaticPlan([FromRoute] Guid id, [FromBody] UpdatePlanInfoDto request)
+        {
+            var plan = await _planRepository.GetPlanByIdAsync(id);
+            if (plan == null || !plan.IsStatic)
+            {
+                return NotFound(new { message = "Static plan not found" });
+            }
+
+            var updatedPlan = await _planRepository.UpdatePlanTitleAsync(Guid.Empty, id, request.Title, request.Notes);
+            if (updatedPlan == null)
+            {
+                return NotFound(new { message = "Static plan not found" });
+            }
+
+            return Ok(new { message = "Static plan updated successfully" });
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpDelete("static/{id}")]
+        public async Task<IActionResult> DeleteStaticPlan(Guid id)
+        {
+            var plan = await _planRepository.GetPlanByIdAsync(id);
+            if (plan == null || !plan.IsStatic)
+            {
+                return NotFound(new { message = "Static plan not found." });
+            }
+
+            var deleted = await _planRepository.DeletePlanAsync(id);
+            if (!deleted)
+            {
+                return NotFound(new { message = "Static plan not found." });
+            }
+
+            return Ok(new { message = "Static plan deleted successfully." });
         }
     }
 }

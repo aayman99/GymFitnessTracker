@@ -4,6 +4,7 @@ using GymFitnessTracker.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace GymFitnessTracker.Migrations.ApplicationDb
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250916175838_AddUserIdToSets")]
+    partial class AddUserIdToSets
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -30,9 +33,6 @@ namespace GymFitnessTracker.Migrations.ApplicationDb
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Title_ar")
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
@@ -79,9 +79,6 @@ namespace GymFitnessTracker.Migrations.ApplicationDb
 
                     b.Property<string>("Description")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Description_ar")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("FemaleVideoUrl")
@@ -143,9 +140,6 @@ namespace GymFitnessTracker.Migrations.ApplicationDb
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Title_ar")
-                        .HasColumnType("nvarchar(max)");
-
                     b.HasKey("Id");
 
                     b.ToTable("PrimaryMuscles");
@@ -160,9 +154,6 @@ namespace GymFitnessTracker.Migrations.ApplicationDb
                     b.Property<float?>("Duration")
                         .HasColumnType("real");
 
-                    b.Property<Guid?>("DurationTimeUnitId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<string>("Note")
                         .HasColumnType("nvarchar(max)");
 
@@ -172,7 +163,7 @@ namespace GymFitnessTracker.Migrations.ApplicationDb
                     b.Property<float?>("RestTime")
                         .HasColumnType("real");
 
-                    b.Property<Guid?>("RestTimeUnitId")
+                    b.Property<Guid?>("TimeUnitId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid?>("UserId")
@@ -189,9 +180,7 @@ namespace GymFitnessTracker.Migrations.ApplicationDb
 
                     b.HasKey("Id");
 
-                    b.HasIndex("DurationTimeUnitId");
-
-                    b.HasIndex("RestTimeUnitId");
+                    b.HasIndex("TimeUnitId");
 
                     b.HasIndex("WeightUnitId");
 
@@ -271,9 +260,6 @@ namespace GymFitnessTracker.Migrations.ApplicationDb
                     b.Property<Guid?>("ExerciseId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<int>("Order")
-                        .HasColumnType("int");
-
                     b.Property<DateTime>("TimeCreated")
                         .HasColumnType("datetime2");
 
@@ -312,15 +298,9 @@ namespace GymFitnessTracker.Migrations.ApplicationDb
 
             modelBuilder.Entity("GymFitnessTracker.Models.Domain.Set", b =>
                 {
-                    b.HasOne("GymFitnessTracker.Models.Domain.TimeUnit", "DurationTimeUnit")
+                    b.HasOne("GymFitnessTracker.Models.Domain.TimeUnit", "TimeUnit")
                         .WithMany()
-                        .HasForeignKey("DurationTimeUnitId")
-                        .OnDelete(DeleteBehavior.NoAction);
-
-                    b.HasOne("GymFitnessTracker.Models.Domain.TimeUnit", "RestTimeUnit")
-                        .WithMany()
-                        .HasForeignKey("RestTimeUnitId")
-                        .OnDelete(DeleteBehavior.NoAction);
+                        .HasForeignKey("TimeUnitId");
 
                     b.HasOne("GymFitnessTracker.Models.Domain.WeightUnit", "WeightUnit")
                         .WithMany()
@@ -332,9 +312,7 @@ namespace GymFitnessTracker.Migrations.ApplicationDb
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("DurationTimeUnit");
-
-                    b.Navigation("RestTimeUnit");
+                    b.Navigation("TimeUnit");
 
                     b.Navigation("WeightUnit");
 

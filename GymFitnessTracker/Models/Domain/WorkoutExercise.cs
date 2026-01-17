@@ -13,6 +13,7 @@ namespace GymFitnessTracker.Models.Domain
         public Guid? CustomExerciseId { get; set; }
         public CustomExercise? CustomExercise { get; set; }
         public DateTime TimeCreated { get; set; } = DateTime.UtcNow;
+        public int Order { get; set; } = 0;
         public ICollection<Set> Sets { get; set; }
     }
 }

@@ -11,9 +11,12 @@ namespace GymFitnessTracker.Models.Domain
         public float? Duration { get; set; }
         public float? RestTime { get; set; }
         public Guid WorkoutExerciseId { get; set; }
-        public Guid? TimeUnitId { get; set; }
+        public Guid? RestTimeUnitId { get; set; }
+        public Guid? DurationTimeUnitId { get; set; }
         public Guid? WeightUnitId { get; set; }
-        public TimeUnit? TimeUnit { get; set; }
+        public Guid? UserId { get; set; } // For tracking user ownership of sets in static plans
+        public TimeUnit? RestTimeUnit { get; set; }
+        public TimeUnit? DurationTimeUnit { get; set; }
         public WeightUnit? WeightUnit { get; set; }
         [JsonIgnore]
         public WorkoutExercise WorkoutExercise { get; set; }

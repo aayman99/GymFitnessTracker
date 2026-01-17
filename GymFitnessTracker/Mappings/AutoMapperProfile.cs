@@ -37,8 +37,10 @@ namespace GymFitnessTracker.Mappings
                 .ReverseMap();
             //CreateMap<Set, SetDto>().ReverseMap();
             CreateMap<Set, SetDto>()
-                .ForMember(dest => dest.TimeUnit, opt => opt.MapFrom
-                    (src => src.TimeUnit != null ? src.TimeUnit.Title : ""))
+                .ForMember(dest => dest.RestTimeUnit, opt => opt.MapFrom
+                    (src => src.RestTimeUnit != null ? src.RestTimeUnit.Title : ""))
+                .ForMember(dest => dest.DurationTimeUnit, opt => opt.MapFrom
+                    (src => src.DurationTimeUnit != null ? src.DurationTimeUnit.Title : ""))
                 .ForMember(dest => dest.WeightUnit, opt => opt.MapFrom
                     (src => src.WeightUnit != null ? src.WeightUnit.Title : ""));
             CreateMap<UpdateSetRequestDto, SetDto>().ReverseMap();

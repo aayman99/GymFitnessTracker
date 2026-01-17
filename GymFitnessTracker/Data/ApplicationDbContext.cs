@@ -20,5 +20,23 @@ namespace GymFitnessTracker.Data
         public DbSet<WeightUnit> WeightUnits { get; set; }
         public DbSet<TimeUnit> TimeUnits { get; set; }
         public DbSet<Plan> Plans { get; set; }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            // Configure Set entity with two relationships to TimeUnit
+            modelBuilder.Entity<Set>()
+                .HasOne(s => s.RestTimeUnit)
+                .WithMany()
+                .HasForeignKey(s => s.RestTimeUnitId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<Set>()
+                .HasOne(s => s.DurationTimeUnit)
+                .WithMany()
+                .HasForeignKey(s => s.DurationTimeUnitId)
+                .OnDelete(DeleteBehavior.NoAction);
+        }
     }
 }

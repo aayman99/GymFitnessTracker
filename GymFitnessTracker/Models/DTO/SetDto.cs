@@ -10,9 +10,12 @@ namespace GymFitnessTracker.Models.DTO
         public int? Repetitions { get; set; }
         public float? Duration { get; set; }
         public float? RestTime { get; set; }
-        public Guid? TimeUnitId { get; set; }
+        public Guid? RestTimeUnitId { get; set; }
+        public Guid? DurationTimeUnitId { get; set; }
         public Guid? WeightUnitId { get; set; }
-        public string? TimeUnit { get; set; }
+        public Guid? UserId { get; set; }
+        public string? RestTimeUnit { get; set; }
+        public string? DurationTimeUnit { get; set; }
         public string? WeightUnit { get; set; }
 
     }

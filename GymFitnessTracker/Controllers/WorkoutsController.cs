@@ -46,10 +46,30 @@ namespace GymFitnessTracker.Controllers
         {
             var userId = GetUserId();
             var plan = await _planRepository.GetPlanByIdAsync(workoutRequestDto.PlanId);
-            if (plan == null || plan.UserId != userId)
+            if (plan == null)
             {
                 return Forbid();
             }
+
+            // Check if plan is static
+            if (plan.IsStatic)
+            {
+                // Only admins can create workouts in static plans
+                var userRoles = User.Claims.Where(c => c.Type == "http://schemas.microsoft.com/ws/2008/06/identity/claims/role").Select(c => c.Value);
+                if (!userRoles.Contains("Admin"))
+                {
+                    return BadRequest(new { message = "Only admins can create workouts in static plans." });
+                }
+            }
+            else
+            {
+                // For non-static plans, check if user owns the plan
+                if (plan.UserId != userId)
+                {
+                    return Forbid();
+                }
+            }
+
             //var workoutDomain = _mapper.Map<Workout>(workoutRequestDto);
             var workoutDomain = new Workout
             {
@@ -70,6 +90,27 @@ namespace GymFitnessTracker.Controllers
         public async Task<IActionResult> UpdateWorkoutInfo([FromRoute] Guid id, [FromBody] UpdateWorkoutInfoDto request)
         {
             var userId = GetUserId();
+            
+            // Check if workout belongs to a static plan
+            var workout = await _workoutRepository.GetWorkoutById(id);
+            if (workout != null)
+            {
+                var plan = await _planRepository.GetPlanByIdAsync(workout.PlanId);
+                if (plan != null && plan.IsStatic)
+                {
+                    // Only admins can edit workouts in static plans
+                    var userRoles = User.Claims.Where(c => c.Type == "http://schemas.microsoft.com/ws/2008/06/identity/claims/role").Select(c => c.Value);
+                    if (!userRoles.Contains("Admin"))
+                    {
+                        return BadRequest(new { message = "Only admins can edit workouts in static plans." });
+                    }
+                }
+                else if (plan != null && !plan.IsStatic && workout.UserId != userId)
+                {
+                    return Forbid();
+                }
+            }
+
             var updatedWorkout = await _workoutRepository.UpdateWorkoutTitleAsync(userId, id, request.Title, request.Note);
 
             if(updatedWorkout == null)
@@ -87,7 +128,23 @@ namespace GymFitnessTracker.Controllers
 
             // Validate Workout Ownership
             var workout = await _workoutRepository.GetWorkoutById(workoutId);
-            if (workout == null || workout.UserId != userId)
+            if (workout == null)
+            {
+                return Forbid();
+            }
+
+            // Check if workout belongs to a static plan
+            var plan = await _planRepository.GetPlanByIdAsync(workout.PlanId);
+            if (plan != null && plan.IsStatic)
+            {
+                // Only admins can add exercises to workouts in static plans
+                var userRoles = User.Claims.Where(c => c.Type == "http://schemas.microsoft.com/ws/2008/06/identity/claims/role").Select(c => c.Value);
+                if (!userRoles.Contains("Admin"))
+                {
+                    return BadRequest(new { message = "Only admins can add exercises to workouts in static plans." });
+                }
+            }
+            else if (workout.UserId != userId)
             {
                 return Forbid();
             }
@@ -140,13 +197,31 @@ namespace GymFitnessTracker.Controllers
         {
             var userId = GetUserId();
 
-            // Validate WorkoutExercise Ownership
+            // Validate WorkoutExercise exists
             var workoutExercise = await _workoutRepository.GetWorkoutExerciseByIdAsync(workoutExerciseId);
-            if (workoutExercise == null || workoutExercise.Workout.UserId != userId)
+            if (workoutExercise == null)
             {
                 return Forbid();
-                //return BadRequest(new { message = "No workout exercise with this Id" });
             }
+
+            // Check if workout belongs to a static plan
+            var plan = await _planRepository.GetPlanByIdAsync(workoutExercise.Workout.PlanId);
+            if (plan != null && plan.IsStatic)
+            {
+                // For static plans, users can add sets to any exercise
+                // No additional ownership check needed - users can add sets to admin-created exercises
+            }
+            else
+            {
+                // For non-static plans, check if user owns the workout
+                if (workoutExercise.Workout.UserId != userId)
+                {
+                    return Forbid();
+                }
+            }
+
+            // Note: Users can add sets to exercises even in static plans
+            // This is the only thing they can control in static plans
             /*else if (workoutExercise.Workout.UserId != userId)
             {
                 return BadRequest(new { message = "user id is not equal workout user id" });
@@ -156,7 +231,7 @@ namespace GymFitnessTracker.Controllers
             var set = await _workoutRepository.AddSetToWorkoutExerciseAsync(
                workoutExerciseId, 
                addSetRequestDto.Repetitions, addSetRequestDto.Note,addSetRequestDto.Weight, addSetRequestDto.Duration, 
-               addSetRequestDto.RestTime, addSetRequestDto.TimeUnitId, addSetRequestDto.WeightUnitId);
+               addSetRequestDto.RestTime, addSetRequestDto.RestTimeUnitId, addSetRequestDto.DurationTimeUnitId, addSetRequestDto.WeightUnitId, userId);
 
             if (set == null)
             {
@@ -172,16 +247,38 @@ namespace GymFitnessTracker.Controllers
         {
             var userId = GetUserId();
 
-            // Validate Set Ownership
+            // Validate Set exists
             var set = await _workoutRepository.GetSetByIdAsync(setId);
-            if (set == null || set.WorkoutExercise.Workout.UserId != userId)
+            if (set == null)
             {
                 return Forbid();
             }
+
+            // Check if workout belongs to a static plan
+            var plan = await _planRepository.GetPlanByIdAsync(set.WorkoutExercise.Workout.PlanId);
+            if (plan != null && plan.IsStatic)
+            {
+                // For static plans, users can only update their own sets
+                if (set.UserId != userId)
+                {
+                    return Forbid();
+                }
+            }
+            else
+            {
+                // For non-static plans, check if user owns the workout
+                if (set.WorkoutExercise.Workout.UserId != userId)
+                {
+                    return Forbid();
+                }
+            }
+
+            // Note: Users can update their own sets even in static plans
+            // This is the only thing they can control in static plans
             var updatedSet = await _workoutRepository.UpdateSetAsync(
                 setId, 
                 updateSetRequestDto.Repetitions, updateSetRequestDto.Note ,updateSetRequestDto.Weight, updateSetRequestDto.Duration, 
-                updateSetRequestDto.RestTime, updateSetRequestDto.TimeUnitId, updateSetRequestDto.WeightUnitId
+                updateSetRequestDto.RestTime, updateSetRequestDto.RestTimeUnitId, updateSetRequestDto.DurationTimeUnitId, updateSetRequestDto.WeightUnitId
                 );
 
             if (updatedSet == null)
@@ -199,10 +296,32 @@ namespace GymFitnessTracker.Controllers
             var userId = GetUserId();
 
             var set = await _workoutRepository.GetSetByIdAsync(setId);
-            if (set == null || set.WorkoutExercise.Workout.UserId != userId)
+            if (set == null)
             {
                 return Forbid();
             }
+
+            // Check if workout belongs to a static plan
+            var plan = await _planRepository.GetPlanByIdAsync(set.WorkoutExercise.Workout.PlanId);
+            if (plan != null && plan.IsStatic)
+            {
+                // For static plans, users can only delete their own sets
+                if (set.UserId != userId)
+                {
+                    return Forbid();
+                }
+            }
+            else
+            {
+                // For non-static plans, check if user owns the workout
+                if (set.WorkoutExercise.Workout.UserId != userId)
+                {
+                    return Forbid();
+                }
+            }
+
+            // Note: Users can delete their own sets even in static plans
+            // This is the only thing they can control in static plans
             var deleted = await _workoutRepository.DeleteSetAsync(setId);
             if (!deleted)
             {
@@ -217,10 +336,27 @@ namespace GymFitnessTracker.Controllers
             var userId = GetUserId();
 
             var workoutExercise = await _workoutRepository.GetWorkoutExerciseByIdAsync(workoutExerciseId);
-            if (workoutExercise == null || workoutExercise.Workout.UserId != userId)
+            if (workoutExercise == null)
             {
                 return Forbid();
             }
+
+            // Check if workout exercise belongs to a static plan
+            var plan = await _planRepository.GetPlanByIdAsync(workoutExercise.Workout.PlanId);
+            if (plan != null && plan.IsStatic)
+            {
+                // Only admins can delete exercises from workouts in static plans
+                var userRoles = User.Claims.Where(c => c.Type == "http://schemas.microsoft.com/ws/2008/06/identity/claims/role").Select(c => c.Value);
+                if (!userRoles.Contains("Admin"))
+                {
+                    return BadRequest(new { message = "Only admins can delete exercises from workouts in static plans." });
+                }
+            }
+            else if (workoutExercise.Workout.UserId != userId)
+            {
+                return Forbid();
+            }
+
             var deleted = await _workoutRepository.DeleteWorkoutExerciseAsync(workoutExerciseId);
             if(!deleted)
             {
@@ -236,10 +372,27 @@ namespace GymFitnessTracker.Controllers
             var userId = GetUserId();
 
             var workout = await _workoutRepository.GetWorkoutById(workoutId);
-            if (workout == null || workout.UserId != userId)
+            if (workout == null)
             {
                 return Forbid();
             }
+
+            // Check if workout belongs to a static plan
+            var plan = await _planRepository.GetPlanByIdAsync(workout.PlanId);
+            if (plan != null && plan.IsStatic)
+            {
+                // Only admins can delete workouts in static plans
+                var userRoles = User.Claims.Where(c => c.Type == "http://schemas.microsoft.com/ws/2008/06/identity/claims/role").Select(c => c.Value);
+                if (!userRoles.Contains("Admin"))
+                {
+                    return BadRequest(new { message = "Only admins can delete workouts in static plans." });
+                }
+            }
+            else if (workout.UserId != userId)
+            {
+                return Forbid();
+            }
+
             var deleted = await _workoutRepository.DeleteWorkoutAsync(workoutId);
             if (!deleted)
             {
@@ -260,6 +413,20 @@ namespace GymFitnessTracker.Controllers
         {
             var weightUnits = await _workoutRepository.GetWeightUnit();
             return Ok(weightUnits);
+        }
+
+        [HttpPut("ReorderExercises")]
+        public async Task<IActionResult> ReorderExercises([FromBody] ReorderExercisesRequestDto request)
+        {
+            var userId = GetUserId();
+            var (success, errorMessage) = await _workoutRepository.ReorderExercisesAsync(userId, request.WorkoutId, request.ExerciseOrders);
+            
+            if (!success)
+            {
+                return BadRequest(new { message = errorMessage });
+            }
+            
+            return Ok(new { message = "Exercises reordered successfully" });
         }
     }
 }

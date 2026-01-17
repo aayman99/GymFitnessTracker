@@ -11,6 +11,7 @@ namespace GymFitnessTracker.Models.DTO
         public ExerciseDto Exercise { get; set; }
         public CustomExerciseDto CustomExercise { get; set; }
         public DateTime TimeCreated { get; set; } = DateTime.UtcNow;
+        public int Order { get; set; }
         //public int SetCount { get; set; }
         public ICollection<SetDto> Sets { get; set; }
     }

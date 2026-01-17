@@ -38,8 +38,30 @@ namespace GymFitnessTracker.Repositories
 
         public async Task<List<Plan>> GetAllPlansAsync(Guid userId)
         {
+            // Get both user plans and static plans
+            var userPlans = await GetAllUserPlansAsync(userId);
+            var staticPlans = await GetAllStaticPlansAsync();
+            
+            return userPlans.Concat(staticPlans).ToList();
+        }
+
+        public async Task<List<Plan>> GetAllStaticPlansAsync()
+        {
             return await _context.Plans
-                .Where(u => u.UserId == userId)
+                .Where(p => p.IsStatic == true)
+                .Include(w => w.Workouts)
+                .ThenInclude(we => we.WorkoutExercises)
+                .ThenInclude(we => we.Exercise)
+                .Include(w => w.Workouts)
+                .ThenInclude(we => we.WorkoutExercises)
+                .ThenInclude(we => we.CustomExercise)
+                .ToListAsync();
+        }
+
+        public async Task<List<Plan>> GetAllUserPlansAsync(Guid userId)
+        {
+            return await _context.Plans
+                .Where(u => u.UserId == userId && u.IsStatic == false)
                 .Include(w => w.Workouts).ToListAsync();
         }
 
@@ -60,6 +82,12 @@ namespace GymFitnessTracker.Repositories
             _context.Plans.Remove(plan);
             await _context.SaveChangesAsync();
             return true;
+        }
+
+        public async Task<bool> IsPlanStaticAsync(Guid planId)
+        {
+            var plan = await _context.Plans.FindAsync(planId);
+            return plan?.IsStatic ?? false;
         }
 
     }
