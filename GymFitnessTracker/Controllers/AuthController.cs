@@ -22,7 +22,7 @@ namespace GymFitnessTracker.Controllers
         private readonly IWebHostEnvironment _webHostEnvironment;
         private readonly RoleManager<IdentityRole> _roleManager;
 
-
+/*online coach branch*/
         public AuthController(UserManager<ApplicationUser> userManager, ILogger<AuthController> logger, IEmailSender emailSender, ITokenRepository tokenRepository, IWebHostEnvironment webHostEnvironment, RoleManager<IdentityRole> roleManager)
         {
             _userManager = userManager;
