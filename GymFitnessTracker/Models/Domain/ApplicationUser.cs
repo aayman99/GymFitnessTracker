@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 
 namespace GymFitnessTracker.Models.Domain
 {
@@ -11,5 +11,9 @@ namespace GymFitnessTracker.Models.Domain
         public string? ProfilePictureUrl { get; set; }
         public string? InAppName { get; set; }
         public string Gender { get; set; }
+        
+        // Google OAuth fields
+        public string? LoginProvider { get; set; } // "Email", "Google", etc.
+        public string? ExternalProviderUserId { get; set; } // Google's user ID
     }
 }
