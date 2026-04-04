@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using GymFitnessTracker.Models.Domain;
 using GymFitnessTracker.Models.DTO;
+using GymFitnessTracker.Models.Recommendation;
 
 namespace GymFitnessTracker.Mappings
 {
@@ -8,6 +9,10 @@ namespace GymFitnessTracker.Mappings
     {
         public AutoMapperProfile()
         {
+            CreateMap<PlanTemplate, PlanTemplateDto>();
+            CreateMap<WorkoutTemplate, WorkoutTemplateDto>();
+            CreateMap<MuscleTarget, MuscleTargetDto>();
+
             //CreateMap<Exercise, ExerciseDto>().ReverseMap();
             CreateMap<Exercise, ExerciseDto>()
                 .ForMember(dest => dest.PrimaryMuscle, opt => opt.MapFrom(src => src.PrimaryMuscle.Title))

@@ -2,6 +2,7 @@ using GymFitnessTracker.Data;
 using GymFitnessTracker.Mappings;
 using GymFitnessTracker.Models.Domain;
 using GymFitnessTracker.Repositories;
+using GymFitnessTracker.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -62,6 +63,7 @@ builder.Services.AddScoped<IWorkoutRepository, SQLWorkoutRepository>();
 builder.Services.AddScoped<IPlanRepository, SQLPlanRepository>();
 builder.Services.AddScoped<ICustomExerciseRepository, SQLCustomExerciseRepository>();
 builder.Services.AddTransient<IEmailSender, SmtpEmailSender>();
+builder.Services.AddScoped<IRecommendationService, RecommendationService>();
 builder.Services.AddAutoMapper(typeof(AutoMapperProfile));
 
 builder.Services.AddIdentityCore<ApplicationUser>()
