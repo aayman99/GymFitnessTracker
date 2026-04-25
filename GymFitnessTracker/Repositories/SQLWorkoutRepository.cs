@@ -16,6 +16,14 @@ namespace GymFitnessTracker.Repositories
 
         public async Task<Workout> CreateWorkoutAsync(Workout workout)
         {
+            var existingWorkouts = await _context.Workouts
+                .Where(w => w.PlanId == workout.PlanId)
+                .ToListAsync();
+
+            workout.Order = existingWorkouts.Any()
+                ? existingWorkouts.Max(w => w.Order) + 1
+                : 0;
+
             await _context.AddAsync(workout);
             await _context.SaveChangesAsync();
             return workout;
@@ -70,7 +78,7 @@ namespace GymFitnessTracker.Repositories
             {
                 workout.WorkoutExercises = workout.WorkoutExercises.OrderBy(we => we.Order).ThenBy(we => we.TimeCreated).ToList();
             }
-            return workouts;
+            return workouts.OrderBy(w => w.Order).ThenBy(w => w.Date).ToList();
             }
             else
             {
@@ -100,7 +108,7 @@ namespace GymFitnessTracker.Repositories
                 {
                     workout.WorkoutExercises = workout.WorkoutExercises.OrderBy(we => we.Order).ThenBy(we => we.TimeCreated).ToList();
                 }
-                return workouts;
+                return workouts.OrderBy(w => w.Order).ThenBy(w => w.Date).ToList();
             }
         }
         public async Task<Workout?> GetWorkoutById(Guid id)
@@ -353,6 +361,38 @@ namespace GymFitnessTracker.Repositories
                     return (false, $"Exercise with ID {exerciseOrder.WorkoutExerciseId} not found in workout");
                 
                 workoutExercise.Order = exerciseOrder.Order;
+            }
+
+            await _context.SaveChangesAsync();
+            return (true, "Success");
+        }
+
+        public async Task<(bool Success, string ErrorMessage)> ReorderWorkoutsAsync(Guid userId, Guid planId, List<WorkoutOrderDto> workoutOrders, bool isAdmin)
+        {
+            var plan = await _context.Plans.FindAsync(planId);
+            if (plan == null)
+                return (false, "Plan not found");
+
+            if (plan.IsStatic)
+            {
+                if (!isAdmin)
+                    return (false, "Access denied: Only admins can reorder workouts in static plans");
+            }
+            else
+            {
+                if (plan.UserId != userId)
+                    return (false, "Access denied: You don't have permission to modify this plan");
+            }
+
+            foreach (var workoutOrder in workoutOrders)
+            {
+                var workout = await _context.Workouts
+                    .FirstOrDefaultAsync(w => w.Id == workoutOrder.WorkoutId && w.PlanId == planId);
+
+                if (workout == null)
+                    return (false, $"Workout with ID {workoutOrder.WorkoutId} not found in plan");
+
+                workout.Order = workoutOrder.Order;
             }
 
             await _context.SaveChangesAsync();

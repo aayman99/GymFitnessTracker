@@ -9,6 +9,7 @@ namespace GymFitnessTracker.Models.DTO
         public string Title { get; set; }
         public string? Notes { get; set; }
         public bool IsStatic { get; set; }
+        public int Order { get; set; }
         public ICollection<WorkoutDto> Workouts { get; set; }
     }
 }

@@ -390,31 +390,164 @@ namespace GymFitnessTracker.Controllers
             }
         }
 
+        /// <summary>
+        /// Apple Login - Accepts user information from frontend after Apple authentication
+        /// WARNING: This endpoint does not verify the Apple identity token. 
+        /// The frontend is responsible for Apple authentication security.
+        /// For production, consider implementing server-side token verification
+        /// using Apple's public keys at https://appleid.apple.com/auth/keys
+        /// </summary>
+        [HttpPost]
+        [Route("AppleLogin")]
+        public async Task<IActionResult> AppleLogin([FromBody] AppleLoginRequest request)
+        {
+            try
+            {
+                var email = request.Email;
+                var name = request.InAppName;
+                var appleUserId = request.AppleUserId;
+                var gender = request.Gender;
+                var picture = request.ProfilePictureUrl;
+
+                if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(appleUserId))
+                {
+                    return BadRequest(new { message = "Email and Apple User ID are required" });
+                }
+
+                var user = await _userManager.FindByEmailAsync(email);
+
+                if (user == null)
+                {
+                    if (string.IsNullOrWhiteSpace(gender))
+                    {
+                        return BadRequest(new { message = "Gender is required for new users" });
+                    }
+
+                    if (string.IsNullOrWhiteSpace(name))
+                    {
+                        return BadRequest(new { message = "Name is required for new users" });
+                    }
+
+                    var newUser = new ApplicationUser
+                    {
+                        UserName = email.Split('@')[0],
+                        Email = email,
+                        EmailConfirmed = true,
+                        InAppName = name,
+                        ProfilePictureUrl = picture,
+                        LoginProvider = "Apple",
+                        ExternalProviderUserId = appleUserId,
+                        Gender = gender
+                    };
+
+                    var result = await _userManager.CreateAsync(newUser);
+
+                    if (!result.Succeeded)
+                    {
+                        return BadRequest(new
+                        {
+                            message = "Failed to create user account",
+                            errors = result.Errors.Select(e => e.Description)
+                        });
+                    }
+
+                    if (await _roleManager.RoleExistsAsync("User"))
+                    {
+                        await _userManager.AddToRoleAsync(newUser, "User");
+                    }
+
+                    user = newUser;
+                }
+                else
+                {
+                    if (user.LoginProvider != null && user.LoginProvider != "Apple")
+                    {
+                        return BadRequest(new
+                        {
+                            message = $"This email is already registered using {user.LoginProvider} login. Please use {user.LoginProvider} to sign in."
+                        });
+                    }
+
+                    if (user.LoginProvider == null)
+                    {
+                        user.LoginProvider = "Apple";
+                        user.ExternalProviderUserId = appleUserId;
+                        await _userManager.UpdateAsync(user);
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(picture) && user.ProfilePictureUrl != picture)
+                    {
+                        user.ProfilePictureUrl = picture;
+                        await _userManager.UpdateAsync(user);
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(name) && user.InAppName != name)
+                    {
+                        user.InAppName = name;
+                        await _userManager.UpdateAsync(user);
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(gender) && user.Gender != gender)
+                    {
+                        user.Gender = gender;
+                        await _userManager.UpdateAsync(user);
+                    }
+                }
+
+                var roles = await _userManager.GetRolesAsync(user);
+                var jwtToken = _tokenRepository.CreateJWTToken(user, roles.ToList());
+
+                return Ok(new
+                {
+                    message = new LoginResponse
+                    {
+                        JwtToken = jwtToken
+                    },
+                    user = new
+                    {
+                        email = user.Email,
+                        name = user.InAppName,
+                        profilePicture = user.ProfilePictureUrl
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during Apple login");
+                return StatusCode(500, new { message = "An error occurred during Apple login" });
+            }
+        }
+
         [HttpPost]
         [Route("ResetPasswordRequest")]
         public async Task<IActionResult> ResetPasswordRequest(EmailRequest emailRequest)
         {
-            var user = await _userManager.FindByEmailAsync(emailRequest.Email);
-            if (user == null)
+            try
             {
-                return BadRequest(new { message = "Invalid user" });
+                var user = await _userManager.FindByEmailAsync(emailRequest.Email);
+                if (user == null)
+                {
+                    return BadRequest(new { message = "Invalid user" });
+                }
+
+                user.PasswordResetPin = new Random().Next(100000, 999999).ToString();
+                user.PasswordResetPinExpiry = DateTime.UtcNow.AddMinutes(3);
+
+                await _userManager.UpdateAsync(user);
+
+                await _emailSender.SendEmailAsync(
+                    emailRequest.Email,
+                    "Password Reset",
+                    $"Pin: {user.PasswordResetPin}"
+                    );
+
+                return Ok(new { message = "Pin sent to your email" });
             }
-
-            // generate password reset pin
-            
-            user.PasswordResetPin = new Random().Next(100000,999999).ToString();
-            user.PasswordResetPinExpiry = DateTime.UtcNow.AddMinutes(3);
-
-            // send email with pin
-            await _emailSender.SendEmailAsync(
-                emailRequest.Email,
-                "Reset reset",
-                $"Pin: {user.PasswordResetPin}"
-                );
-
-            await _userManager.UpdateAsync(user);
-            return Ok(new { message = "Pin sent to your email" });
-
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during password reset request");
+                return StatusCode(500, new { message = "An error occurred while processing your request", error = ex.Message });
+            }
         }
 
         [HttpPost]

@@ -12,9 +12,9 @@ namespace GymFitnessTracker.Models.Domain
         public string? InAppName { get; set; }
         public string Gender { get; set; }
         
-        // Google OAuth fields
-        public string? LoginProvider { get; set; } // "Email", "Google", etc.
-        public string? ExternalProviderUserId { get; set; } // Google's user ID
+        // External auth provider fields
+        public string? LoginProvider { get; set; } // "Email", "Google", "Apple", etc.
+        public string? ExternalProviderUserId { get; set; } // External provider's user ID
 
         // Optional coach-only fields (shown when user has Coach role)
         public string? Bio { get; set; }

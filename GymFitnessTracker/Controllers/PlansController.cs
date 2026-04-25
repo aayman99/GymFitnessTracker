@@ -156,6 +156,40 @@ namespace GymFitnessTracker.Controllers
             return Ok(new { message = "Static plan updated successfully" });
         }
 
+        [HttpPut("ReorderPlans")]
+        public async Task<IActionResult> ReorderPlans([FromBody] ReorderPlansRequestDto request)
+        {
+            var userId = GetUserId();
+            var isAdmin = User.Claims
+                .Where(c => c.Type == "http://schemas.microsoft.com/ws/2008/06/identity/claims/role")
+                .Select(c => c.Value)
+                .Contains("Admin");
+
+            var (success, errorMessage) = await _planRepository.ReorderPlansAsync(userId, request.PlanOrders, isAdmin, reorderStatic: false);
+
+            if (!success)
+            {
+                return BadRequest(new { message = errorMessage });
+            }
+
+            return Ok(new { message = "Plans reordered successfully" });
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpPut("static/ReorderPlans")]
+        public async Task<IActionResult> ReorderStaticPlans([FromBody] ReorderPlansRequestDto request)
+        {
+            var userId = GetUserId();
+            var (success, errorMessage) = await _planRepository.ReorderPlansAsync(userId, request.PlanOrders, isAdmin: true, reorderStatic: true);
+
+            if (!success)
+            {
+                return BadRequest(new { message = errorMessage });
+            }
+
+            return Ok(new { message = "Static plans reordered successfully" });
+        }
+
         [Authorize(Roles = "Admin")]
         [HttpDelete("static/{id}")]
         public async Task<IActionResult> DeleteStaticPlan(Guid id)

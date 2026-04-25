@@ -7,6 +7,7 @@
         public string Title { get; set; }
         public string? Notes { get; set; }
         public bool IsStatic { get; set; } = false;
+        public int Order { get; set; } = 0;
         public ICollection<Workout> Workouts { get; set; }
     }
 }

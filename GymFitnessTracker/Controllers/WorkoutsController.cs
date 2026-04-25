@@ -428,5 +428,24 @@ namespace GymFitnessTracker.Controllers
             
             return Ok(new { message = "Exercises reordered successfully" });
         }
+
+        [HttpPut("ReorderWorkouts")]
+        public async Task<IActionResult> ReorderWorkouts([FromBody] ReorderWorkoutsRequestDto request)
+        {
+            var userId = GetUserId();
+            var isAdmin = User.Claims
+                .Where(c => c.Type == "http://schemas.microsoft.com/ws/2008/06/identity/claims/role")
+                .Select(c => c.Value)
+                .Contains("Admin");
+
+            var (success, errorMessage) = await _workoutRepository.ReorderWorkoutsAsync(userId, request.PlanId, request.WorkoutOrders, isAdmin);
+
+            if (!success)
+            {
+                return BadRequest(new { message = errorMessage });
+            }
+
+            return Ok(new { message = "Workouts reordered successfully" });
+        }
     }
 }

@@ -19,6 +19,7 @@ namespace GymFitnessTracker.Repositories
             {
                 Host = _configuration["EmailSettings:Host"],
                 Port = int.Parse(_configuration["EmailSettings:Port"]),
+                //UseDefaultCredentials = false,
                 Credentials = new NetworkCredential(
                     _configuration["EmailSettings:Username"],
                     _configuration["EmailSettings:Password"]

@@ -9,6 +9,7 @@
         public Guid PlanId { get; set; }
         public Plan Plan { get; set; }
         public Guid UserId { get; set; }
+        public int Order { get; set; } = 0;
         public ICollection<WorkoutExercise> WorkoutExercises { get; set; }
     }
 }

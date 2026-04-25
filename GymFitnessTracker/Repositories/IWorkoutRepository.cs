@@ -25,6 +25,7 @@ namespace GymFitnessTracker.Repositories
         Task<List<TimeUnit>> GetTimeUnit();
         Task<List<WeightUnit>> GetWeightUnit();
         Task<(bool Success, string ErrorMessage)> ReorderExercisesAsync(Guid userId, Guid workoutId, List<ExerciseOrderDto> exerciseOrders);
+        Task<(bool Success, string ErrorMessage)> ReorderWorkoutsAsync(Guid userId, Guid planId, List<WorkoutOrderDto> workoutOrders, bool isAdmin);
 
     }
 }

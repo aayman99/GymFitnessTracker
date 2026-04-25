@@ -10,6 +10,7 @@ namespace GymFitnessTracker.Models.DTO
         public DateTime Date { get; set; } = DateTime.UtcNow;
         public Guid PlanId { get; set; }
         public Guid UserId { get; set; }
+        public int Order { get; set; }
         public ICollection<WorkoutExerciseDto> WorkoutExercises { get; set; }
     }
 }

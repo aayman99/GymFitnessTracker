@@ -1,5 +1,6 @@
 ﻿using GymFitnessTracker.Data;
 using GymFitnessTracker.Models.Domain;
+using GymFitnessTracker.Models.DTO;
 using Microsoft.EntityFrameworkCore;
 
 namespace GymFitnessTracker.Repositories
@@ -15,6 +16,14 @@ namespace GymFitnessTracker.Repositories
 
         public async Task<Plan> CreatePlanAsync(Plan plan)
         {
+            var existingPlans = plan.IsStatic
+                ? await _context.Plans.Where(p => p.IsStatic).ToListAsync()
+                : await _context.Plans.Where(p => !p.IsStatic && p.UserId == plan.UserId).ToListAsync();
+
+            plan.Order = existingPlans.Any()
+                ? existingPlans.Max(p => p.Order) + 1
+                : 0;
+
             await _context.Plans.AddAsync(plan);
             await _context.SaveChangesAsync();
             return plan;
@@ -55,6 +64,8 @@ namespace GymFitnessTracker.Repositories
                 .Include(w => w.Workouts)
                 .ThenInclude(we => we.WorkoutExercises)
                 .ThenInclude(we => we.CustomExercise)
+                .OrderBy(p => p.Order)
+                .ThenBy(p => p.Title)
                 .ToListAsync();
         }
 
@@ -62,7 +73,10 @@ namespace GymFitnessTracker.Repositories
         {
             return await _context.Plans
                 .Where(u => u.UserId == userId && u.IsStatic == false)
-                .Include(w => w.Workouts).ToListAsync();
+                .Include(w => w.Workouts)
+                .OrderBy(p => p.Order)
+                .ThenBy(p => p.Title)
+                .ToListAsync();
         }
 
         public async Task<Plan?> GetPlanByIdAsync(Guid id)
@@ -88,6 +102,39 @@ namespace GymFitnessTracker.Repositories
         {
             var plan = await _context.Plans.FindAsync(planId);
             return plan?.IsStatic ?? false;
+        }
+
+        public async Task<(bool Success, string ErrorMessage)> ReorderPlansAsync(Guid userId, List<PlanOrderDto> planOrders, bool isAdmin, bool reorderStatic)
+        {
+            if (reorderStatic && !isAdmin)
+                return (false, "Access denied: Only admins can reorder static plans");
+
+            foreach (var planOrder in planOrders)
+            {
+                var plan = await _context.Plans.FirstOrDefaultAsync(p => p.Id == planOrder.PlanId);
+
+                if (plan == null)
+                    return (false, $"Plan with ID {planOrder.PlanId} not found");
+
+                if (reorderStatic)
+                {
+                    if (!plan.IsStatic)
+                        return (false, $"Plan with ID {planOrder.PlanId} is not a static plan");
+                }
+                else
+                {
+                    if (plan.IsStatic)
+                        return (false, $"Plan with ID {planOrder.PlanId} is a static plan and cannot be reordered here");
+
+                    if (plan.UserId != userId)
+                        return (false, $"Access denied: You don't have permission to modify plan {planOrder.PlanId}");
+                }
+
+                plan.Order = planOrder.Order;
+            }
+
+            await _context.SaveChangesAsync();
+            return (true, "Success");
         }
 
     }

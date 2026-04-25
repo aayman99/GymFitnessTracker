@@ -53,8 +53,31 @@ namespace GymFitnessTracker.Models.Recommendation
             new() { MuscleName = "Triceps", ExerciseCount = 1 }
         };
 
+        private static readonly List<MuscleTarget> GeneralDayMuscles = new()
+        {
+            new() { MuscleName = "Chest", ExerciseCount = 1 },
+            new() { MuscleName = "Back", ExerciseCount = 1 },
+            new() { MuscleName = "Shoulders", ExerciseCount = 1 },
+            new() { MuscleName = "Legs", ExerciseCount = 1 },
+            new() { MuscleName = "Biceps", ExerciseCount = 1 },
+            new() { MuscleName = "Triceps", ExerciseCount = 1 },
+            new() { MuscleName = "Core", ExerciseCount = 1 }
+        };
+
         public static List<PlanTemplate> Templates { get; } = new()
         {
+            new PlanTemplate
+            {
+                Id = "general-3day",
+                Name = "General Plan",
+                DaysPerWeek = 3,
+                Workouts = new()
+                {
+                    new() { Title = "General Day 1", DayNumber = 1, MuscleTargets = GeneralDayMuscles },
+                    new() { Title = "General Day 2", DayNumber = 2, MuscleTargets = GeneralDayMuscles },
+                    new() { Title = "General Day 3", DayNumber = 3, MuscleTargets = GeneralDayMuscles }
+                }
+            },
             new PlanTemplate
             {
                 Id = "ppl-3day",
@@ -74,12 +97,12 @@ namespace GymFitnessTracker.Models.Recommendation
                 DaysPerWeek = 6,
                 Workouts = new()
                 {
-                    new() { Title = "Push Day", DayNumber = 1, MuscleTargets = PushMuscles },
-                    new() { Title = "Pull Day", DayNumber = 2, MuscleTargets = PullMuscles },
-                    new() { Title = "Legs Day", DayNumber = 3, MuscleTargets = LegMuscles },
-                    new() { Title = "Push Day", DayNumber = 4, MuscleTargets = PushMuscles },
-                    new() { Title = "Pull Day", DayNumber = 5, MuscleTargets = PullMuscles },
-                    new() { Title = "Legs Day", DayNumber = 6, MuscleTargets = LegMuscles }
+                    new() { Title = "Push Day 1", DayNumber = 1, MuscleTargets = PushMuscles },
+                    new() { Title = "Pull Day 1", DayNumber = 2, MuscleTargets = PullMuscles },
+                    new() { Title = "Legs Day 1", DayNumber = 3, MuscleTargets = LegMuscles },
+                    new() { Title = "Push Day 2", DayNumber = 4, MuscleTargets = PushMuscles },
+                    new() { Title = "Pull Day 2", DayNumber = 5, MuscleTargets = PullMuscles },
+                    new() { Title = "Legs Day 2", DayNumber = 6, MuscleTargets = LegMuscles }
                 }
             },
             new PlanTemplate
@@ -100,10 +123,10 @@ namespace GymFitnessTracker.Models.Recommendation
                 DaysPerWeek = 4,
                 Workouts = new()
                 {
-                    new() { Title = "Upper Day", DayNumber = 1, MuscleTargets = UpperMuscles },
-                    new() { Title = "Lower Day", DayNumber = 2, MuscleTargets = LowerMuscles },
-                    new() { Title = "Upper Day", DayNumber = 3, MuscleTargets = UpperMuscles },
-                    new() { Title = "Lower Day", DayNumber = 4, MuscleTargets = LowerMuscles }
+                    new() { Title = "Upper Day 1", DayNumber = 1, MuscleTargets = UpperMuscles },
+                    new() { Title = "Lower Day 1", DayNumber = 2, MuscleTargets = LowerMuscles },
+                    new() { Title = "Upper Day 2", DayNumber = 3, MuscleTargets = UpperMuscles },
+                    new() { Title = "Lower Day 2", DayNumber = 4, MuscleTargets = LowerMuscles }
                 }
             },
             new PlanTemplate
@@ -113,9 +136,9 @@ namespace GymFitnessTracker.Models.Recommendation
                 DaysPerWeek = 3,
                 Workouts = new()
                 {
-                    new() { Title = "Full Body Day", DayNumber = 1, MuscleTargets = FullBodyMuscles },
-                    new() { Title = "Full Body Day", DayNumber = 2, MuscleTargets = FullBodyMuscles },
-                    new() { Title = "Full Body Day", DayNumber = 3, MuscleTargets = FullBodyMuscles }
+                    new() { Title = "Full Body Day 1", DayNumber = 1, MuscleTargets = FullBodyMuscles },
+                    new() { Title = "Full Body Day 2", DayNumber = 2, MuscleTargets = FullBodyMuscles },
+                    new() { Title = "Full Body Day 3", DayNumber = 3, MuscleTargets = FullBodyMuscles }
                 }
             },
             new PlanTemplate

@@ -1,4 +1,5 @@
 ﻿using GymFitnessTracker.Models.Domain;
+using GymFitnessTracker.Models.DTO;
 
 namespace GymFitnessTracker.Repositories
 {
@@ -12,5 +13,6 @@ namespace GymFitnessTracker.Repositories
         Task<Plan?> GetPlanByIdAsync(Guid id);
         Task<bool> DeletePlanAsync(Guid id);
         Task<bool> IsPlanStaticAsync(Guid planId);
+        Task<(bool Success, string ErrorMessage)> ReorderPlansAsync(Guid userId, List<PlanOrderDto> planOrders, bool isAdmin, bool reorderStatic);
     }
 }
